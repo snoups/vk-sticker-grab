@@ -1,8 +1,10 @@
-import requests
-from requests.sessions import Session
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import local
+
+import requests
+from requests.sessions import Session
 
 LAST_STICKER_ID = 5 # 72740
 STICKER_RESOLUTION = 512 # 64 / 128 / 256 / 512
@@ -16,20 +18,24 @@ def get_session() -> Session:
         thread_local.session = requests.Session()
     return thread_local.session
 
+def save_sticker(sticker_id: str, content: bytes) -> None:
+    filename = f'stickers/{sticker_id}.png'
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'wb') as f:
+        f.write(content)
+
 def download_sticker(sticker_id: str) -> None:
     session = get_session()
     with session.get(URL.format(sticker_id, STICKER_RESOLUTION)) as r:
-        print(f'Download sticker {sticker_id}')
-
+        msg = 'Download sticker {}: {}!'
         if r.status_code == 200:
-            image = open(f'stickers/{sticker_id}.png', 'wb')
-            image.write(r.content)
-            image.close()
+            print(msg.format(sticker_id, 'SUCCESS'))
+            save_sticker(sticker_id, r.content)
         else: # TODO: make redownload sticker
-            print(f'Failed to download sticker {sticker_id}')
+            print(msg.format(sticker_id, 'FAIL'))
 
 def download() -> None:
-    with ThreadPoolExecutor(max_workers = 10) as executor:
+    with ThreadPoolExecutor() as executor:
         executor.map(download_sticker, sticker_ids)
 
 def main() -> None: 
